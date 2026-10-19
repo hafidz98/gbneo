@@ -1,0 +1,58 @@
+# GB Neo — build a debug APK on every push, download it from the Actions tab.
+#
+# Architecture: Gadgetbridge is the pinned core (fetched from Codeberg at build
+# time). Our custom UI + features live in overlay/ and are applied on top.
+# Updating GB = change the commit hash in GB_VERSION.
+#
+# Flow: dev -> push to master -> Actions clones GB + applies overlay + builds
+#       (~15-25 min first run) -> download APK from the Actions tab.
+
+name: Build debug APK
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gbneo (overlay + workflow)
+        uses: actions/checkout@v4
+        with:
+          path: gbneo
+
+      - name: Read pinned GB version
+        id: gbver
+        run: echo "sha=$(cat gbneo/GB_VERSION | tr -d ' \n')" >> "$GITHUB_OUTPUT"
+
+      - name: Clone Gadgetbridge core @ pinned commit
+        run: git clone https://codeberg.org/Freeyourgadget/Gadgetbridge.git gb-core && cd gb-core && git checkout ${{ steps.gbver.outputs.sha }}
+
+      - name: Apply GB Neo overlay
+        run: bash gbneo/scripts/apply-overlay.sh gb-core gbneo/overlay
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        working-directory: gb-core
+        run: chmod +x gradlew && ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: gb-neo-debug-apk
+          path: gb-core/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
