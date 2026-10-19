@@ -1,11 +1,4 @@
 # GB Neo — build a debug APK on every push, download it from the Actions tab.
-#
-# Architecture: Gadgetbridge is the pinned core (fetched from Codeberg at build
-# time). Our custom UI + features live in overlay/ and are applied on top.
-# Updating GB = change the commit hash in GB_VERSION.
-#
-# Flow: dev -> push to master -> Actions clones GB + applies overlay + builds
-#       (~15-25 min first run) -> download APK from the Actions tab.
 
 name: Build debug APK
 
@@ -39,9 +32,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
